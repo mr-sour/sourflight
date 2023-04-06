@@ -385,7 +385,6 @@ void gpsInit(void)
 void gpsInitNmea(void)
 {
     static bool atgmRestartDone = false;
-    static uint8_t customCommandIndex=0;
 #if !defined(GPS_NMEA_TX_ONLY)
     uint32_t now;
 #endif
@@ -430,31 +429,37 @@ void gpsInitNmea(void)
                    serialPrint(gpsPort, "$PCAS10,0*1C\r\n");    // hot restart
                }
 
-                //NMEA custom commands
-                char commands[strlen(gpsConfig()->nmeaCustomCommands) + 1];
-                strcpy(commands, gpsConfig()->nmeaCustomCommands);
+               //NMEA custom commands
+               static int commandOffset = 0;
+               const char* commands = gpsConfig()->nmeaCustomCommands;
+               const char* cmd = commands + commandOffset;
 
-                //divide commands with spaces and send them to the gps one by one
-                char *saveptr;
-                char* tok = strtok_r(commands, " ", &saveptr);
+               // skip leading whitespaces and get first command length
+               int commandLen;
+               while (*cmd && (commandLen = strcspn(cmd, " \0")) == 0) {
+                   cmd++;  // skip separators
+               }
 
-                for (uint8_t i=0; i < customCommandIndex; i++) {
-                    tok = strtok_r(NULL, " ", &saveptr);
-                }
+               if (*cmd) {
+                   // Send the current command to the GPS
+                   serialWriteBuf(gpsPort, (uint8_t*)cmd, commandLen);
+                   serialWriteBuf(gpsPort, (uint8_t*)"\r\n", 2);
+                   cliPrintLine(cmd);    // actually prints all commands remaining
 
-                if (tok == NULL) {
-                    customCommandIndex=0;
-                    gpsData.state_position++;
-                }
-                else {
-                    customCommandIndex++;
+                   // Move to the next command
+                   cmd += commandLen;  // move to next command
+               } 
 
-                    char printable[strlen(tok) + 3];
-                    strcpy(printable, tok);
-                    strcat(printable, "\r\n");
-                    serialPrint(gpsPort, printable);
-                    cliPrintLine(printable);
-                }
+               // skip trailing whitespaces
+               while (*cmd && strcspn(cmd, " \0") == 0) cmd++;
+
+               if (*cmd) {
+                   // more commands to send
+                   commandOffset = cmd - commands;
+               } else {
+                   gpsData.state_position++;
+                   commandOffset = 0;
+               }
            } else
 #else
            {
