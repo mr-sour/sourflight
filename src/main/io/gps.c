@@ -17,7 +17,7 @@
  *
  * If not, see <http://www.gnu.org/licenses/>.
  */
-#include "cli/cli_debug_print.h"
+
 #include <ctype.h>
 #include <string.h>
 #include <math.h>
@@ -101,8 +101,7 @@ uint8_t GPS_svinfo_cno[GPS_SV_MAXSATS_M8N];
 #define GPS_TIMEOUT (2500)
 // How many entries in gpsInitData array below
 #define GPS_INIT_ENTRIES (GPS_BAUDRATE_MAX + 1)
-//Delay between gps commands. E.g for BAUD rate.
-#define GPS_CHANGE_DELAY (200)
+#define GPS_BAUDRATE_CHANGE_DELAY (200)
 // Timeout for waiting ACK/NAK in GPS task cycles (0.25s at 100Hz)
 #define UBLOX_ACK_TIMEOUT_MAX_COUNT (25)
 
@@ -392,7 +391,7 @@ void gpsInitNmea(void)
         case GPS_STATE_INITIALIZING:
 #if !defined(GPS_NMEA_TX_ONLY)
            now = millis();
-           if (now - gpsData.state_ts < GPS_CHANGE_DELAY) {
+           if (now - gpsData.state_ts < 1000) {
                return;
            }
            gpsData.state_ts = now;
@@ -412,7 +411,7 @@ void gpsInitNmea(void)
         case GPS_STATE_CHANGE_BAUD:
 #if !defined(GPS_NMEA_TX_ONLY)
            now = millis();
-           if (now - gpsData.state_ts < GPS_CHANGE_DELAY) {
+           if (now - gpsData.state_ts < 1000) {
                return;
            }
            gpsData.state_ts = now;
@@ -428,37 +427,37 @@ void gpsInitNmea(void)
                    serialPrint(gpsPort, "$PCAS02,100*1E\r\n");  // 10Hz refresh rate
                    serialPrint(gpsPort, "$PCAS10,0*1C\r\n");    // hot restart
                }
+               else {
+                    //NMEA custom commands after ATGM336 initialization
+                    static int commandOffset = 0;
+                    const char* commands = gpsConfig()->nmeaCustomCommands;
+                    const char* cmd = commands + commandOffset;
 
-               //NMEA custom commands
-               static int commandOffset = 0;
-               const char* commands = gpsConfig()->nmeaCustomCommands;
-               const char* cmd = commands + commandOffset;
+                    // skip leading whitespaces and get first command length
+                    int commandLen;
+                    while (*cmd && (commandLen = strcspn(cmd, " \0")) == 0) {
+                        cmd++;  // skip separators
+                    }
 
-               // skip leading whitespaces and get first command length
-               int commandLen;
-               while (*cmd && (commandLen = strcspn(cmd, " \0")) == 0) {
-                   cmd++;  // skip separators
-               }
+                    if (*cmd) {
+                        // Send the current command to the GPS
+                        serialWriteBuf(gpsPort, (uint8_t*)cmd, commandLen);
+                        serialWriteBuf(gpsPort, (uint8_t*)"\r\n", 2);
 
-               if (*cmd) {
-                   // Send the current command to the GPS
-                   serialWriteBuf(gpsPort, (uint8_t*)cmd, commandLen);
-                   serialWriteBuf(gpsPort, (uint8_t*)"\r\n", 2);
-                   cliPrintLine(cmd);    // actually prints all commands remaining
+                        // Move to the next command
+                        cmd += commandLen;  // move to next command
+                    }
 
-                   // Move to the next command
-                   cmd += commandLen;  // move to next command
-               } 
+                    // skip trailing whitespaces
+                    while (*cmd && strcspn(cmd, " \0") == 0) cmd++;
 
-               // skip trailing whitespaces
-               while (*cmd && strcspn(cmd, " \0") == 0) cmd++;
-
-               if (*cmd) {
-                   // more commands to send
-                   commandOffset = cmd - commands;
-               } else {
-                   gpsData.state_position++;
-                   commandOffset = 0;
+                    if (*cmd) {
+                        // more commands to send
+                        commandOffset = cmd - commands;
+                    } else {
+                        gpsData.state_position++;
+                        commandOffset = 0;
+                    }
                }
            } else
 #else
@@ -635,7 +634,7 @@ void gpsInitUblox(void)
     switch (gpsData.state) {
         case GPS_STATE_INITIALIZING:
             now = millis();
-            if (now - gpsData.state_ts < GPS_CHANGE_DELAY)
+            if (now - gpsData.state_ts < GPS_BAUDRATE_CHANGE_DELAY)
                 return;
 
             if (gpsData.state_position < GPS_INIT_ENTRIES) {
