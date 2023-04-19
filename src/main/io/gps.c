@@ -426,8 +426,7 @@ void gpsInitNmea(void)
                    atgmRestartDone = true;
                    serialPrint(gpsPort, "$PCAS02,100*1E\r\n");  // 10Hz refresh rate
                    serialPrint(gpsPort, "$PCAS10,0*1C\r\n");    // hot restart
-               }
-               else {
+               } else {
                     //NMEA custom commands after ATGM336 initialization
                     static int commandOffset = 0;
                     const char* commands = gpsConfig()->nmeaCustomCommands;
