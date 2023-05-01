@@ -969,13 +969,13 @@ static bool osdDisplayStat(int statistic, uint8_t displayRow)
 #ifdef USE_GPS_LAP_TIMER
     case OSD_STAT_BEST_3_CONSEC_LAPS: {
         printLapTime(buff, gpsLapTimerData.best3Consec);
-        osdDisplayStatisticLabel(displayRow, "BEST 3 CON", buff);
+        osdDisplayStatisticLabel(midCol, displayRow, "BEST 3 CON", buff);
         return true;
     }
 
     case OSD_STAT_BEST_LAP: {
         printLapTime(buff, gpsLapTimerData.bestLapTime);
-        osdDisplayStatisticLabel(displayRow, "BEST LAP", buff);
+        osdDisplayStatisticLabel(midCol, displayRow, "BEST LAP", buff);
         return true;
     }
 #endif // GPS_LAP_TIMER
