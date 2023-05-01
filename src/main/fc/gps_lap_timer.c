@@ -91,9 +91,6 @@ void gpsLapTimerEndSetGate(void)
     gpsLapTimerConfigMutable()->gateLon = gpsLapTimerData.gateLocation.lon;
 }
 
-#define MIN(a,b) (((a)<(b))?(a):(b))
-#define MAX(a,b) (((a)>(b))?(a):(b))
-
 void lapTimerNewGpsData(void)
 {
     GPS_distance_cm_bearing(&gpsSol.llh.lat, &gpsSol.llh.lon, &gpsLapTimerData.gateLocation.lat, &gpsLapTimerData.gateLocation.lon, &gpsLapTimerData.distToPoint, &gpsLapTimerData.dirToPoint);

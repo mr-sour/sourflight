@@ -151,6 +151,8 @@
 #define PARAM_NAME_GPS_UPDATE_RATE_HZ "gps_update_rate_hz"
 #define PARAM_NAME_GPS_REQUIRED_SATS "gps_required_sats"
 #define PARAM_NAME_GPS_MINIMUM_SATS "gps_minimum_sats"
+#define PARAM_NAME_GPS_NMEA_CUSTOM_COMMANDS "gps_nmea_custom_commands"
+
 
 #ifdef USE_GPS_RESCUE
 #define PARAM_NAME_GPS_RESCUE_MIN_START_DIST "gps_rescue_min_start_dist"

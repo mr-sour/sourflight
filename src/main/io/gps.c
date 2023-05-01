@@ -425,9 +425,39 @@ void gpsInitNmea(void)
                if (!atgmRestartDone) {
                    atgmRestartDone = true;
                    serialPrint(gpsPort, "$PCAS02,100*1E\r\n");  // 10Hz refresh rate
-                   serialPrint(gpsPort, "$PCAS10,0*1C\r\n");    // hot restart 
+                 serialPrint(gpsPort, "$PCAS10,0*1C\r\n");    // hot restart
+               } else {
+                    //NMEA custom commands after ATGM336 initialization
+                    static int commandOffset = 0;
+                    const char* commands = gpsConfig()->nmeaCustomCommands;
+                    const char* cmd = commands + commandOffset;
+
+                    // skip leading whitespaces and get first command length
+                    int commandLen;
+                    while (*cmd && (commandLen = strcspn(cmd, " \0")) == 0) {
+                        cmd++;  // skip separators
+                    }
+
+                    if (*cmd) {
+                        // Send the current command to the GPS
+                        serialWriteBuf(gpsPort, (uint8_t*)cmd, commandLen);
+                        serialWriteBuf(gpsPort, (uint8_t*)"\r\n", 2);
+
+                        // Move to the next command
+                        cmd += commandLen;  // move to next command
+                    }
+
+                    // skip trailing whitespaces
+                    while (*cmd && strcspn(cmd, " \0") == 0) cmd++;
+
+                    if (*cmd) {
+                        // more commands to send
+                        commandOffset = cmd - commands;
+                    } else {
+                        gpsData.state_position++;
+                        commandOffset = 0;
+                    }
                }
-               gpsData.state_position++;
            } else
 #else
            {
